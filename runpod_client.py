@@ -9,22 +9,32 @@ logger = logging.getLogger(__name__)
 # Config
 RUNPOD_API_KEY = os.getenv("RUNPOD_API_KEY")
 RUNPOD_ENDPOINT_ID = os.getenv("RUNPOD_ENDPOINT_ID")
+MOCK_MODE = os.getenv("MOCK_MODE", "false").lower() == "true"
 
 class RunPodClient:
     def __init__(self):
-        if not RUNPOD_API_KEY:
-            logger.warning("RUNPOD_API_KEY not set")
+        if not RUNPOD_API_KEY and not MOCK_MODE:
+            logger.warning("RUNPOD_API_KEY not set and MOCK_MODE is disabled")
         runpod.api_key = RUNPOD_API_KEY
         self.endpoint_id = RUNPOD_ENDPOINT_ID
 
     async def generate_music(self, prompt: str, duration: int) -> Dict[str, Any]:
         """
         Triggers a RunPod serverless job for Meta MusicGen.
-        Returns the job result which should contain the audio URL.
+        Supports MOCK_MODE for local testing/demonstration.
         """
+        if MOCK_MODE:
+            logger.info(f"[MOCK MODE] Simulating generation for: {prompt}")
+            await asyncio.sleep(3) # Simulate processing time
+            return {
+                "status": "success", 
+                "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", 
+                "job_id": "mock_job_12345"
+            }
+
         if not self.endpoint_id:
             logger.error("RUNPOD_ENDPOINT_ID is missing")
-            return {"error": "RunPod Endpoint ID not configured"}
+            return {"status": "error", "message": "RunPod Endpoint ID not configured"}
 
         try:
             # Initialize the endpoint
